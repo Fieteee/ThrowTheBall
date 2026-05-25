@@ -1,0 +1,350 @@
+<!DOCTYPE html>
+<html lang="de">
+
+<head>
+  <meta charset="UTF-8">
+  <title>Pokémon Catch Rate Rechner</title>
+
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+
+  <link rel="stylesheet" href="catch.css">
+</head>
+
+<body>
+
+<nav class="nav">
+  <a href="index.html">Catch Rechner</a>
+  <a href="tracker.html">Soul Link Tracker</a>
+</nav>
+
+<video autoplay muted loop playsinline id="bg-video">
+  <source src="Video/short.mp4" type="video/mp4">
+</video>
+
+<div class="container">
+
+  <h1>Pokémon Catch Rate Rechner</h1>
+
+  <label>Pokémon Name:</label>
+
+  <div class="autocomplete-wrapper">
+    <input
+      id="pokemonName"
+      type="text"
+      placeholder="Voluminas"
+      oninput="showSuggestions()"
+      autocomplete="off"
+    >
+
+    <div id="suggestions"></div>
+  </div>
+
+  <br><br>
+
+  <label>KP-Leiste:</label>
+
+  <select id="hpPercent">
+    <option value="1">Voll / 100%</option>
+    <option value="0.75">Ca. 75%</option>
+    <option value="0.5">Ca. 50%</option>
+    <option value="0.3">Gelb / ca. 30%</option>
+    <option value="0.15">Rot / ca. 15%</option>
+    <option value="0.01">1 KP / fast besiegt</option>
+  </select>
+
+  <br><br>
+
+  <label>Ball:</label>
+
+  <select id="ballBonus">
+    <option value="1">Pokéball</option>
+    <option value="1.5">Superball</option>
+    <option value="2">Hyperball</option>
+    <option value="255">Meisterball</option>
+  </select>
+
+  <br><br>
+
+  <label>Status:</label>
+
+  <select id="statusBonus">
+    <option value="1">Kein Status</option>
+    <option value="1.5">Paralyse / Gift / Brand</option>
+    <option value="2.5">Schlaf / Eis</option>
+  </select>
+
+  <br><br>
+
+  <button onclick="calculateCatchChance()">Berechnen</button>
+
+  <div id="result">
+    <h2>Fangchance: -</h2>
+  </div>
+
+</div>
+
+<script>
+
+let pokemonList = [];
+
+async function loadPokemonList() {
+
+  pokemonList = [];
+
+  for (let i = 1; i <= 649; i++) {
+
+    const response =
+      await fetch(
+        `https://pokeapi.co/api/v2/pokemon-species/${i}`
+      );
+
+    const data =
+      await response.json();
+
+    const germanName =
+      data.names.find(
+        n => n.language.name === "de"
+      );
+
+    pokemonList.push({
+      id: i,
+      name: germanName
+        ? germanName.name
+        : data.name,
+      apiName: data.name
+    });
+  }
+}
+
+async function getPokemonData(name) {
+
+  const response =
+    await fetch(
+      `https://pokeapi.co/api/v2/pokemon/${name}`
+    );
+
+  if (!response.ok) {
+    throw new Error("Pokémon nicht gefunden");
+  }
+
+  const data =
+    await response.json();
+
+  return {
+    name: data.name,
+    image: data.sprites.front_default,
+    catchRateUrl: data.species.url
+  };
+}
+
+async function getCatchRate(url) {
+
+  const response =
+    await fetch(url);
+
+  const data =
+    await response.json();
+
+  return data.capture_rate;
+}
+
+function showSuggestions() {
+
+  const input =
+    document.getElementById("pokemonName");
+
+  const suggestions =
+    document.getElementById("suggestions");
+
+  const value =
+    input.value
+      .trim()
+      .toLowerCase();
+
+  suggestions.innerHTML = "";
+
+  if (!value) {
+    return;
+  }
+
+  const filtered =
+    pokemonList
+      .filter(pokemon =>
+        pokemon.name
+          .toLowerCase()
+          .startsWith(value)
+      )
+      .slice(0, 10);
+
+  filtered.forEach(pokemon => {
+
+    const div =
+      document.createElement("div");
+
+    div.className = "suggestion";
+
+    div.innerHTML = `
+      <img src="https://raw.githubusercontent.com/PokeAPI/sprites/master/sprites/pokemon/${pokemon.id}.png">
+      <span>${pokemon.name}</span>
+    `;
+
+    div.onclick = () => {
+
+      input.value = pokemon.name;
+
+      suggestions.innerHTML = "";
+    };
+
+    suggestions.appendChild(div);
+  });
+}
+
+async function calculateCatchChance() {
+
+  try {
+
+    const pokemonName =
+      document.getElementById("pokemonName")
+        .value
+        .trim()
+        .toLowerCase();
+
+    const foundPokemon =
+      pokemonList.find(
+        pokemon =>
+          pokemon.name.toLowerCase() === pokemonName
+      );
+
+    const apiName =
+      foundPokemon
+        ? foundPokemon.apiName
+        : pokemonName;
+
+    const pokemonData =
+      await getPokemonData(apiName);
+
+    const catchRate =
+      await getCatchRate(
+        pokemonData.catchRateUrl
+      );
+
+    const hpPercent =
+      Number(
+        document.getElementById("hpPercent").value
+      );
+
+    const ballBonus =
+      Number(
+        document.getElementById("ballBonus").value
+      );
+
+    const statusBonus =
+      Number(
+        document.getElementById("statusBonus").value
+      );
+
+    if (ballBonus === 255) {
+
+      document.getElementById("result").innerHTML = `
+        <h2>${foundPokemon ? foundPokemon.name : pokemonData.name}</h2>
+
+        <img src="${pokemonData.image}">
+
+        <p>
+          Catch Rate:
+          ${catchRate}
+        </p>
+
+        <p>
+          Fangchance:
+          100%
+        </p>
+      `;
+
+      return;
+    }
+
+    const maxHp = 100;
+
+    const currentHp =
+      Math.max(
+        1,
+        Math.round(maxHp * hpPercent)
+      );
+
+    const a =
+      (
+        (3 * maxHp - 2 * currentHp)
+        * catchRate
+        * ballBonus
+        * statusBonus
+      )
+      / (3 * maxHp);
+
+    let chance;
+
+    if (a >= 255) {
+
+      chance = 100;
+
+    } else {
+
+      const b =
+        65536 /
+        Math.sqrt(
+          Math.sqrt(255 / a)
+        );
+
+      chance =
+        Math.pow(b / 65536, 4) * 100;
+    }
+
+    const expectedBalls =
+      1 / (chance / 100);
+
+    document.getElementById("result").innerHTML = `
+      <h2>${foundPokemon ? foundPokemon.name : pokemonData.name}</h2>
+
+      <img src="${pokemonData.image}">
+
+      <p>
+        Catch Rate:
+        ${catchRate}
+      </p>
+
+      <p>
+        Geschätzte Fangchance:
+        ${chance.toFixed(2)}%
+      </p>
+
+      <p>
+        Ø Benötigte Bälle:
+        ${expectedBalls.toFixed(1)}
+      </p>
+    `;
+
+  } catch (error) {
+
+    console.log(error);
+
+    document.getElementById("result").innerHTML = `
+      <h2>Fehler</h2>
+
+      <p>
+        Pokémon nicht gefunden.
+      </p>
+    `;
+  }
+}
+
+window.onload = function () {
+
+  loadPokemonList();
+};
+
+</script>
+
+</body>
+</html>

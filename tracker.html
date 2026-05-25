@@ -1,0 +1,42 @@
+<!DOCTYPE html>
+<html lang="de">
+<head>
+  <meta charset="UTF-8">
+  <title>Soul Link Tracker</title>
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+
+  <link rel="stylesheet" href="https://fonts.googleapis.com/css2?family=Press+Start+2P&display=swap">
+  <link rel="stylesheet" href="pokemon.css">
+</head>
+
+<body>
+
+<video autoplay muted loop playsinline id="bg-video">
+  <source src="Video/short.mp4" type="video/mp4">
+</video>
+
+<nav class="nav">
+  <a href="index.html">Catch Rechner</a>
+  <a href="tracker.html">Soul Link Tracker</a>
+</nav>
+
+<div class="container">
+  <h1>Soul Link Tracker</h1>
+
+  <div id="playerSetup"></div>
+
+  <div class="tracker-tabs">
+    <button onclick="showView('game')">Game</button>
+    <button onclick="showView('box')">Box</button>
+    <button onclick="showView('grave')">Grave</button>
+  </div>
+
+  <div id="trackerView"></div>
+
+  <button onclick="clearTracker()">Tracker löschen</button>
+</div>
+
+<script src="tracker.js"></script>
+
+</body>
+</html>
